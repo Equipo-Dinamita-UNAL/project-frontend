@@ -1,0 +1,418 @@
+ {
+    margin 0;
+    padding 0;
+    box-sizing border-box;
+}
+
+root {
+    --primary #1D9E75;
+    --primary-dark #0F6E56;
+    --primary-light #E1F5EE;
+    --danger #E24B4A;
+    --danger-light #FCEBEB;
+    --warning #BA7517;
+    --warning-light #FAEEDA;
+    --text-primary #2C2C2A;
+    --text-secondary #5F5E5A;
+    --text-muted #888780;
+    --border #D3D1C7;
+    --bg-page #F1EFE8;
+    --bg-card #ffffff;
+    --bg-sidebar #085041;
+    --radius 8px;
+    --radius-lg 12px;
+}
+
+body {
+    font-family -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size 15px;
+    color var(--text-primary);
+    background var(--bg-page);
+    line-height 1.6;
+}
+
+ ── Layout ── 
+.layout {
+    display flex;
+    min-height 100vh;
+}
+
+.sidebar {
+    width 220px;
+    background var(--bg-sidebar);
+    display flex;
+    flex-direction column;
+    padding 0;
+    flex-shrink 0;
+}
+
+.sidebar-logo {
+    padding 1.5rem 1.25rem 1rem;
+    border-bottom 0.5px solid rgba(255,255,255,0.1);
+}
+
+.sidebar-logo h1 {
+    font-size 17px;
+    font-weight 500;
+    color #ffffff;
+    letter-spacing 0.3px;
+}
+
+.sidebar-logo p {
+    font-size 12px;
+    color rgba(255,255,255,0.5);
+    margin-top 2px;
+}
+
+.sidebar-nav {
+    padding 1rem 0;
+    flex 1;
+}
+
+.nav-section-label {
+    font-size 11px;
+    font-weight 500;
+    color rgba(255,255,255,0.4);
+    text-transform uppercase;
+    letter-spacing 0.8px;
+    padding 0.75rem 1.25rem 0.25rem;
+}
+
+.nav-link {
+    display flex;
+    align-items center;
+    gap 10px;
+    padding 0.6rem 1.25rem;
+    color rgba(255,255,255,0.7);
+    text-decoration none;
+    font-size 14px;
+    transition background 0.15s, color 0.15s;
+    border-radius 0;
+}
+
+.nav-linkhover {
+    background rgba(255,255,255,0.08);
+    color #ffffff;
+}
+
+.nav-link.active {
+    background rgba(255,255,255,0.15);
+    color #ffffff;
+}
+
+.nav-link i {
+    font-size 17px;
+    opacity 0.85;
+}
+
+.main {
+    flex 1;
+    display flex;
+    flex-direction column;
+    overflow hidden;
+}
+
+.topbar {
+    background var(--bg-card);
+    border-bottom 0.5px solid var(--border);
+    padding 0 2rem;
+    height 56px;
+    display flex;
+    align-items center;
+    justify-content space-between;
+}
+
+.topbar-title {
+    font-size 16px;
+    font-weight 500;
+    color var(--text-primary);
+}
+
+.topbar-user {
+    font-size 13px;
+    color var(--text-secondary);
+}
+
+.content {
+    padding 2rem;
+    overflow-y auto;
+    flex 1;
+}
+
+ ── Cards ── 
+.card {
+    background var(--bg-card);
+    border 0.5px solid var(--border);
+    border-radius var(--radius-lg);
+    padding 1.25rem;
+}
+
+.card-header {
+    display flex;
+    align-items center;
+    justify-content space-between;
+    margin-bottom 1.25rem;
+}
+
+.card-title {
+    font-size 15px;
+    font-weight 500;
+    color var(--text-primary);
+}
+
+ ── Metric cards ── 
+.metrics-grid {
+    display grid;
+    grid-template-columns repeat(auto-fit, minmax(160px, 1fr));
+    gap 12px;
+    margin-bottom 2rem;
+}
+
+.metric-card {
+    background #ffffff;
+    border 0.5px solid var(--border);
+    border-radius var(--radius);
+    padding 1rem 1.25rem;
+}
+
+.metric-label {
+    font-size 12px;
+    color var(--text-muted);
+    margin-bottom 4px;
+}
+
+.metric-value {
+    font-size 26px;
+    font-weight 500;
+    color var(--text-primary);
+}
+
+.metric-sub {
+    font-size 12px;
+    color var(--text-muted);
+    margin-top 2px;
+}
+
+ ── Tabla ── 
+.table-wrapper {
+    overflow-x auto;
+}
+
+table {
+    width 100%;
+    border-collapse collapse;
+    font-size 14px;
+}
+
+thead th {
+    text-align left;
+    padding 0.6rem 1rem;
+    font-size 12px;
+    font-weight 500;
+    color var(--text-muted);
+    border-bottom 0.5px solid var(--border);
+    white-space nowrap;
+}
+
+tbody td {
+    padding 0.75rem 1rem;
+    border-bottom 0.5px solid var(--border);
+    color var(--text-primary);
+    vertical-align middle;
+}
+
+tbody trlast-child td {
+    border-bottom none;
+}
+
+tbody trhover {
+    background var(--bg-page);
+}
+
+ ── Badges ── 
+.badge {
+    display inline-block;
+    font-size 12px;
+    font-weight 500;
+    padding 3px 10px;
+    border-radius 20px;
+}
+
+.badge-success {
+    background #E1F5EE;
+    color #0F6E56;
+}
+
+.badge-danger {
+    background #FCEBEB;
+    color #A32D2D;
+}
+
+.badge-warning {
+    background #FAEEDA;
+    color #854F0B;
+}
+
+.badge-secondary {
+    background #F1EFE8;
+    color #5F5E5A;
+}
+
+ ── Botones ── 
+.btn {
+    display inline-flex;
+    align-items center;
+    gap 6px;
+    padding 0.45rem 1rem;
+    border-radius var(--radius);
+    border 0.5px solid var(--border);
+    background transparent;
+    font-size 14px;
+    font-weight 400;
+    color var(--text-primary);
+    cursor pointer;
+    text-decoration none;
+    transition background 0.15s;
+}
+
+.btnhover {
+    background var(--bg-page);
+}
+
+.btn-primary {
+    background var(--primary);
+    color #ffffff;
+    border-color var(--primary);
+}
+
+.btn-primaryhover {
+    background var(--primary-dark);
+    border-color var(--primary-dark);
+}
+
+.btn-danger {
+    background transparent;
+    color var(--danger);
+    border-color var(--danger);
+}
+
+.btn-dangerhover {
+    background var(--danger-light);
+}
+
+.btn-sm {
+    padding 0.3rem 0.65rem;
+    font-size 13px;
+}
+
+.btn i {
+    font-size 15px;
+}
+
+ ── Formularios ── 
+.form-grid {
+    display grid;
+    grid-template-columns 1fr 1fr;
+    gap 1rem;
+}
+
+.form-group {
+    display flex;
+    flex-direction column;
+    gap 5px;
+}
+
+.form-group.full {
+    grid-column 1  -1;
+}
+
+label {
+    font-size 13px;
+    color var(--text-secondary);
+    font-weight 500;
+}
+
+input, select, textarea {
+    padding 0.5rem 0.75rem;
+    border 0.5px solid var(--border);
+    border-radius var(--radius);
+    font-size 14px;
+    color var(--text-primary);
+    background #ffffff;
+    font-family inherit;
+    transition border-color 0.15s;
+}
+
+inputfocus, selectfocus, textareafocus {
+    outline none;
+    border-color var(--primary);
+}
+
+input.error, select.error {
+    border-color var(--danger);
+}
+
+.field-error {
+    font-size 12px;
+    color var(--danger);
+}
+
+ ── Utilidades ── 
+.flex { display flex; }
+.items-center { align-items center; }
+.gap-2 { gap 8px; }
+.gap-3 { gap 12px; }
+.mb-1 { margin-bottom 0.5rem; }
+.mb-2 { margin-bottom 1rem; }
+.mb-3 { margin-bottom 1.5rem; }
+.text-muted { color var(--text-muted); font-size 13px; }
+.text-right { text-align right; }
+
+ ── Estado vacío ── 
+.empty-state {
+    text-align center;
+    padding 3rem;
+    color var(--text-muted);
+}
+
+.empty-state i {
+    font-size 40px;
+    display block;
+    margin-bottom 0.75rem;
+    opacity 0.4;
+}
+
+.empty-state p {
+    font-size 14px;
+}
+
+ ── Toast ── 
+.toast-container {
+    position fixed;
+    bottom 1.5rem;
+    right 1.5rem;
+    display flex;
+    flex-direction column;
+    gap 8px;
+    z-index 999;
+}
+
+.toast {
+    background var(--text-primary);
+    color #ffffff;
+    padding 0.65rem 1rem;
+    border-radius var(--radius);
+    font-size 14px;
+    display flex;
+    align-items center;
+    gap 8px;
+    animation slideIn 0.2s ease;
+}
+
+.toast.success { background var(--primary-dark); }
+.toast.error { background #A32D2D; }
+
+@keyframes slideIn {
+    from { transform translateY(8px); opacity 0; }
+    to { transform translateY(0); opacity 1; }
+}

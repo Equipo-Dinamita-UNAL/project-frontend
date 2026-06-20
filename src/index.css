@@ -1,0 +1,232 @@
+/* Variables de color para OdontoGate */
+:root {
+  --primary: #0077b6;       /* Azul médico principal */
+  --primary-hover: #0096c7; /* Azul más claro */
+  --bg-sidebar: #03045e;    /* Azul oscuro para el menú */
+  --bg-main: #f8f9fa;       /* Gris muy claro para el fondo */
+  --text-dark: #212529;
+  --text-light: #ffffff;
+  --border-color: #dee2e6;
+  --danger: #e63946;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+  background-color: var(--bg-main);
+  color: var(--text-dark);
+}
+
+/* Contenedor Principal (Layout) */
+.layout-container {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* Menú Lateral (Sidebar) */
+.sidebar {
+  width: 260px;
+  background-color: var(--bg-sidebar);
+  color: var(--text-light);
+  display: flex;
+  flex-direction: column;
+  padding: 20px 0;
+  position: fixed;
+  height: 100vh;
+}
+
+.sidebar-logo {
+  padding: 0 20px 20px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 20px;
+}
+
+.sidebar-logo h2 {
+  font-size: 24px;
+  font-weight: bold;
+  color: #caf0f8;
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 0 10px;
+}
+
+/* Botones del Menú */
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 15px;
+  background: none;
+  border: none;
+  color: #adb5bd;
+  text-align: left;
+  font-size: 16px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+}
+
+.nav-link:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: var(--text-light);
+}
+
+.nav-link.active {
+  background-color: var(--primary);
+  color: var(--text-light);
+  font-weight: 600;
+}
+
+/* Contenido Principal */
+.main-content {
+  margin-left: 260px; /* Deja espacio para el Sidebar fijo */
+  padding: 40px;
+  width: calc(100% - 260px);
+}
+
+.main-content h1 {
+  font-size: 28px;
+  color: var(--bg-sidebar);
+  margin-bottom: 5px;
+}
+
+/* Formularios */
+.form-container {
+  background: white;
+  padding: 25px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  margin-bottom: 30px;
+  border: 1px solid var(--border-color);
+}
+
+.form-container h3 {
+  margin-bottom: 15px;
+  color: var(--bg-sidebar);
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.form-group label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #495057;
+}
+
+.form-control {
+  padding: 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.form-control:focus {
+  border-color: var(--primary);
+}
+
+/* Botones */
+.btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn-primary {
+  background-color: var(--primary);
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-hover);
+}
+
+.btn-danger {
+  background-color: var(--danger);
+  color: white;
+}
+
+.btn-danger:hover {
+  background-color: #bd2130;
+}
+
+/* Tablas */
+.table-container {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+}
+
+.custom-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.custom-table th {
+  background-color: #f1f3f5;
+  color: #495057;
+  padding: 15px;
+  font-weight: 600;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.custom-table td {
+  padding: 15px;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 15px;
+}
+
+.custom-table tr:last-child td {
+  border-bottom: none;
+}
+
+.custom-table tr:hover {
+  background-color: #f8f9fa;
+}
+
+/* Estados de las citas */
+.status-badge {
+  padding: 4px 8px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.status-badge.programada {
+  background-color: #d1e7dd;
+  color: #0f5132;
+}
+
+.status-badge.cancelada {
+  background-color: #f8d7da;
+  color: #842029;
+}
