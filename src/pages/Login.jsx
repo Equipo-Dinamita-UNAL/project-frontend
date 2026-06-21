@@ -17,11 +17,12 @@ export default function Login({ onLoginSuccess }) {
 
     loginRequest({ email, password })
       .then((response) => {
-        // Pasamos el tipo de usuario al estado global de App
-        onLoginSuccess(response.userType);
+        // 🔑 Pasamos tanto el tipo/rol de usuario como el token JWT a App.jsx
+        // Ajusta los nombres de las propiedades si tu backend las devuelve de otra forma (ej. response.role, response.token)
+        onLoginSuccess(response.userType, response.token); 
       })
       .catch((err) => {
-        setError(err.message);
+        setError(err.message || 'Error al iniciar sesión. Inténtalo de nuevo.');
       });
   };
 

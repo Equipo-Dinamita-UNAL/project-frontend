@@ -38,6 +38,16 @@ export default function Sidebar({ currentPage, setCurrentPage, userRole, onLogou
             </>
           )}
 
+          {/*  NUEVO BOTÓN EXCLUSIVO PARA PACIENTES: Reemplaza el botón que estaba en citas */}
+          {role === 'PATIENT' && (
+            <button 
+              onClick={() => setCurrentPage('payments')} 
+              className={`nav-link ${currentPage === 'payments' ? 'active' : ''}`}
+            >
+              Mis Cuentas / Pagos 
+            </button>
+          )}
+
           {/* Citas: ADMINISTRATOR, PATIENT y DOCTOR */}
           {(role === 'ADMINISTRATOR' || role === 'PATIENT' || role === 'DOCTOR') && (
             <button
@@ -58,13 +68,13 @@ export default function Sidebar({ currentPage, setCurrentPage, userRole, onLogou
             </button>
           )}
 
-          {/* NUEVO BOTÓN INTEGRADO AQUÍ: Control de Usuarios para Admin y Mis Pacientes para Doctor ✅ */}
+          {/* Control de Usuarios para Admin y Mis Pacientes para Doctor */}
           {(role === 'ADMINISTRATOR' || role === 'DOCTOR') && (
             <button
               onClick={() => setCurrentPage('users')}
               className={`nav-link ${currentPage === 'users' ? 'active' : ''}`}
             >
-              {role === 'ADMINISTRATOR' ? 'Gestión de Usuarios 👥' : 'Mis Pacientes 👥'}
+              {role === 'ADMINISTRATOR' ? 'Gestión de Usuarios' : 'Mis Pacientes'}
             </button>
           )}
         </nav>

@@ -14,8 +14,11 @@ export const loginRequest = (credentials) => {
       );
 
       if (user) {
-        // Retorna exactamente lo que manda tu LoginResponse en Java
-        resolve({ userType: user.userType });
+        // Retorna exactamente lo que manda tu LoginResponse en Java (Rol + Token JWT simulado)
+        resolve({ 
+          userType: user.userType,
+          token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.MockTokenOdontoGate2026.SimulationOnly" // 🔑 Token de prueba
+        });
       } else {
         reject(new Error("Credenciales incorrectas. Inténtalo de nuevo."));
       }

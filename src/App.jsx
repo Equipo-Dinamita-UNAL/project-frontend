@@ -1,19 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import Schedules from './pages/Schedules';
 import Appointments from './pages/Appointments';
 import MedicalHistory from './pages/MedicalHistory';
 import Payments from './pages/Payments';
 import Login from './pages/Login';
-import UsersPage from './pages/UsersPage'; // Importación lista ✅
+import UsersPage from './pages/UsersPage';
 
 export default function App() {
-  const [userRole, setUserRole] = useState(null); // Almacena ADMINISTRATOR, DOCTOR o PATIENT
+  // Al arrancar, revisamos si el navegador ya recuerda el rol guardado
+  const [userRole, setUserRole] = useState(() => localStorage.getItem('userRole') || null);
   const [currentPage, setCurrentPage] = useState('dashboard');
 
-  const handleLoginSuccess = (role) => {
+  // 🔌 ESTADO COMPARTIDO PARA PASAR LA CITA SELECCIONADA A PAGOS
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState(null);
+
+  // Guardamos el token y el rol al iniciar sesión con éxito desde el backend
+  const handleLoginSuccess = (role, token) => {
     setUserRole(role);
-    // Redirección inicial según el rol del backend
+    localStorage.setItem('userRole', role);
+    
+    if (token) {
+      localStorage.setItem('token', token); // 🔑 ¡Aquí guardamos el pase JWT!
+    }
+
+    // Redirección inicial según el rol retornado
     if (role === 'DOCTOR') {
       setCurrentPage('history');
     } else if (role === 'PATIENT') {
@@ -23,9 +34,19 @@ export default function App() {
     }
   };
 
+  // Limpiamos la sesión del navegador
   const handleLogout = () => {
     setUserRole(null);
+    localStorage.removeItem('userRole');
+    localStorage.removeItem('token'); // ❌ Eliminamos el JWT para revocar acceso
+    setSelectedAppointmentId(null);  // Reseteamos el ID al cerrar sesión
     setCurrentPage('dashboard');
+  };
+
+  // 🚀 FUNCIÓN INTERMEDIARIA PARA CAPTURAR EL ID Y REDIRECCIONAR A PAGOS
+  const handleRedirectToPay = (appointmentId) => {
+    setSelectedAppointmentId(appointmentId); // Guarda el ID (puede ser null si se entra desde el menú global)
+    setCurrentPage('payments');               // Cambia de página automáticamente
   };
 
   const renderPage = () => {
@@ -49,7 +70,8 @@ export default function App() {
         return (
           <Appointments 
             userRole={userRole} 
-            onNavigateToPayments={(page) => setCurrentPage(page)} 
+            // Conectamos la acción con nuestro gestor de redirección
+            onNavigateToPay={handleRedirectToPay}  
           />
         );
 
@@ -57,9 +79,15 @@ export default function App() {
         return <MedicalHistory userRole={userRole}/>;
 
       case 'payments':
-        return <Payments userRole={userRole} />;
+        return (
+          <Payments 
+            userRole={userRole} 
+            // Inyectamos el ID guardado y la función para limpiarlo al terminar
+            selectedAppointmentId={selectedAppointmentId}
+            clearSelectedId={() => setSelectedAppointmentId(null)}
+          />
+        );
 
-      // CASO NUEVO INTEGRADO AQUÍ ✅
       case 'users':
         return <UsersPage userRole={userRole} />;
 
@@ -68,7 +96,7 @@ export default function App() {
     }
   };
 
-  // Si no está logueado, se bloquea la app entera mostrando solo el Login
+  // Si no hay sesión iniciada, se bloquea la app entera mostrando solo el Login
   if (!userRole) {
     return <Login onLoginSuccess={handleLoginSuccess} />;
   }
@@ -77,7 +105,12 @@ export default function App() {
     <div className="app-container" style={{ display: 'flex', minHeight: '100vh' }}>
       <Sidebar 
         currentPage={currentPage} 
-        setCurrentPage={setCurrentPage} 
+        // Cuando cambien de página manualmente desde el Sidebar, limpiamos el ID seleccionado 
+        // para que no entre bloqueado a la pasarela por defecto
+        setCurrentPage={(page) => {
+          if (page !== 'payments') setSelectedAppointmentId(null);
+          setCurrentPage(page);
+        }} 
         userRole={userRole} 
         onLogout={handleLogout} 
       />
