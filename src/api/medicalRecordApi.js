@@ -1,49 +1,67 @@
-// Datos iniciales de prueba (Mocks) basados en MedicalRecordResponse
-let mockRecords = [
-  {
-    id: 1,
-    patientId: 101,
-    diagnosis: "Caries profunda en molar inferior derecho",
-    treatment: "Endodoncia y corona de porcelana",
-    observations: "Paciente presenta sensibilidad extrema al frío.",
-    date: "2026-06-15T10:00:00",
-    createdAt: "2026-06-15T10:05:00"
-  },
-  {
-    id: 2,
-    patientId: 102,
-    diagnosis: "Gingivitis moderada generalizada",
-    treatment: "Profilaxis profunda y raspaje radicular",
-    observations: "Se recomienda uso de enjuague con clorhexidina por 7 días.",
-    date: "2026-06-18T15:30:00",
-    createdAt: "2026-06-18T15:32:00"
+// src/api/MedicalRecordApi.js
+
+const API_BASE_URL = 'http://localhost:8080/api/medical-records';
+
+const getAuthHeaders = () => {
+  const token = localStorage.getItem('token');
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': token ? `Bearer ${token}` : ''
+  };
+};
+
+// 1. Obtener el historial clínico de un paciente por su ID
+export const getMedicalRecordsByPatient = async (patientId) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/patient/${patientId}`, {
+      method: 'GET',
+      headers: getAuthHeaders()
+    });
+    if (!response.ok) throw new Error('Error al obtener el historial clínico');
+    return await response.json();
+  } catch (error) {
+    console.error("Error en getMedicalRecordsByPatient:", error);
+    return [];
   }
-];
-
-// GET /api/medical-records (Simulado para ver todos en el front)
-export const getAllMedicalRecords = () => {
-  return new Promise((resolve) => {
-    setTimeout(() => resolve([...mockRecords]), 300);
-  });
 };
 
-// POST /api/medical-records (Basado en MedicalRecordRequest)
-export const createMedicalRecord = (recordRequest) => {
-  return new Promise((resolve) => {
-    const newRecord = {
-      id: mockRecords.length + 1,
-      ...recordRequest,
-      createdAt: new Date().toISOString()
-    };
-    mockRecords = [newRecord, ...mockRecords];
-    setTimeout(() => resolve(newRecord), 300);
-  });
+// 2. Crear una nueva entrada en la historia clínica
+export const createMedicalRecord = async (recordData) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(recordData)
+    });
+    if (!response.ok) {
+      // Capturar el mensaje real del backend (ej: "el paciente está inactivo")
+      const errorData = await response.json().catch(() => null);
+      const message = errorData?.message || errorData?.descripcion || 'No tienes permisos o los datos son inválidos';
+      throw new Error(message);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error("Error en createMedicalRecord:", error);
+    throw error;
+  }
 };
 
-// DELETE /api/medical-records/{id}
-export const deleteMedicalRecord = (id) => {
-  return new Promise((resolve) => {
-    mockRecords = mockRecords.filter(record => record.id !== id);
-    setTimeout(() => resolve(true), 300);
-  });
+// 3. Modificar una entrada existente
+export const updateMedicalRecord = async (id, recordData) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/${id}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(recordData)
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+      const message = errorData?.message || errorData?.descripcion || 'Error al actualizar la historia clínica';
+      throw new Error(message);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error("Error en updateMedicalRecord:", error);
+    throw error;
+  }
 };

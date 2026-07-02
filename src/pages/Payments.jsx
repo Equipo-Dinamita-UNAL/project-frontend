@@ -1,236 +1,208 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { getAllPayments, createVirtualPayment, createPresentialPayment, updatePaymentStatus, downloadReceiptPdf } from '../api/paymentApi.js';
 
-export default function Payments({ userRole, selectedAppointmentId, clearSelectedId }) {
+export default function Payments({ userRole }) {
   const role = userRole ? userRole.toUpperCase() : '';
+  const currentUserId = localStorage.getItem('userId') || '1';
 
-  // Base de datos de simulación (Mocks alineados a los IDs comunes del sistema)
-  const [appointments, setAppointments] = useState([
-    { id: 1, patientName: "Carlos Pérez", dentistName: "Dra. Maria Silva", reason: "Ortodoncia", price: 150000, status: "pendiente", date: "2026-06-25" },
-    { id: 2, patientName: "Carlos Pérez", dentistName: "Dr. Alex Muñiz", reason: "Limpieza Dental", price: 100000, status: "pendiente", date: "2026-06-28" },
-    { id: 3, patientName: "Ana Gómez", dentistName: "Dr. Alex Muñiz", reason: "Consulta General", price: 80000, status: "pendiente", date: "2026-06-24" }
-  ]);
+  const [transactions, setTransactions] = useState([]);
+  const [filterStatus, setFilterStatus] = useState('TODOS');
 
-  const [paymentHistory, setPaymentHistory] = useState([
-    { id: "TRX-9901", appointmentId: 95, patientName: "Carlos Pérez", reason: "Diseño de Sonrisa", amount: 800000, date: "2026-05-10", method: "TARJETA_CREDITO" },
-    { id: "TRX-9902", appointmentId: 96, patientName: "Ana Gómez", reason: "Ortodoncia", amount: 150000, date: "2026-06-01", method: "TRANSFERENCIA_PSE" }
-  ]);
+  // Estados para simular o procesar nuevos cobros
+  const [appointmentId, setAppointmentId] = useState('');
+  const [amount, setAmount] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('EFECTIVO');
 
-  // Estados de formulario
-  const [activeAppointment, setActiveAppointment] = useState(null);
-  const [paymentMethod, setPaymentMethod] = useState('TARJETA_CREDITO');
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [paymentSuccess, setPaymentSuccess] = useState(false);
-  
-  // Estado de Rastreo del Administrador
-  const [adminSearchQuery, setAdminSearchQuery] = useState('');
+  // Cargar el historial real del backend
+  const loadFinancialData = () => {
+    getAllPayments()
+        .then(data => {
+          // Mapeamos de forma segura la lista que retorna el backend
+          if (Array.isArray(data)) {
+            setTransactions(data);
+          } else {
+            setTransactions([]);
+          }
+        })
+        .catch(err => {
+          console.error("Error al cargar caja general:", err);
+          setTransactions([]);
+        });
+  };
 
-  // EFECTO: Escucha de forma limpia la redirección externa externa
   useEffect(() => {
-    if (selectedAppointmentId) {
-      const target = appointments.find(app => app.id === Number(selectedAppointmentId));
-      if (target) {
-        setActiveAppointment(target);
-        setPaymentSuccess(false);
-      }
-    }
-  }, [selectedAppointmentId]);
+    loadFinancialData();
+  }, []);
 
-  const handleProcessPayment = (e) => {
+  // Filtrado reactivo e inmediato en pantalla
+  const filteredTransactions = transactions.filter(t => {
+    if (filterStatus !== 'TODOS' && t.status !== filterStatus) return false;
+    return true;
+  });
+
+  const handleRegisterPayment = (e) => {
     e.preventDefault();
-    if (!activeAppointment) return;
-    setIsProcessing(true);
+    if (!appointmentId || !amount) return;
 
-    const backendPayload = {
-      appointmentId: activeAppointment.id,
-      paymentMethod: paymentMethod,
-      amount: activeAppointment.price,
-      transactionDate: new Date().toISOString().split('T')[0]
+    const paymentRequest = {
+      appointmentId: parseInt(appointmentId),
+      amount: parseFloat(amount),
+      method: paymentMethod
     };
 
-    console.log("Payload enviado al endpoint /api/payments/process :", backendPayload);
+    // Si es Administrador procesa presencial, si es Paciente genera link virtual
+    const action = role === 'ADMINISTRATOR' ? createPresentialPayment : createVirtualPayment;
 
-    setTimeout(() => {
-      setIsProcessing(false);
-      setPaymentSuccess(true);
-      
-      setAppointments(prev => prev.map(app => app.id === activeAppointment.id ? { ...app, status: 'pagado' } : app));
-      setPaymentHistory(prev => [
-        {
-          id: `TRX-${Math.floor(1000 + Math.random() * 9000)}`,
-          appointmentId: activeAppointment.id,
-          patientName: activeAppointment.patientName,
-          reason: activeAppointment.reason,
-          amount: activeAppointment.price,
-          date: new Date().toISOString().split('T')[0],
-          method: paymentMethod
-        },
-        ...prev
-      ]);
-
-      if (clearSelectedId) clearSelectedId();
-    }, 2000);
+    action(paymentRequest)
+        .then(() => {
+          alert('Transacción financiera registrada correctamente en el libro de caja.');
+          loadFinancialData();
+          setAppointmentId('');
+          setAmount('');
+        })
+        .catch(err => alert('No se pudo asentar el pago. Revisa que el ID de la cita sea válido.'));
   };
 
-  const handleResetForm = () => {
-    setPaymentSuccess(false);
-    setActiveAppointment(null);
-    if (clearSelectedId) clearSelectedId();
+  const handleToggleStatus = (id, currentStatus) => {
+    const nextStatus = currentStatus === 'PAGADO' ? 'RECHAZADO' : 'PAGADO';
+    updatePaymentStatus(id, nextStatus)
+        .then(() => {
+          alert(`Estado de transacción #${id} modificado a ${nextStatus}.`);
+          loadFinancialData();
+        })
+        .catch(err => alert('Error al actualizar el estado de la transacción'));
   };
-
-  // ==================== VISTA PACIENTES ====================
-  if (role === 'PATIENT') {
-    const myPendingAppointments = appointments.filter(app => app.patientName === "Carlos Pérez" && app.status === "pendiente");
-    const myHistory = paymentHistory.filter(pay => pay.patientName === "Carlos Pérez");
-
-    return (
-      <div style={{ padding: '20px', maxWidth: '1000px', margin: '0 auto' }}>
-        <h2 style={{ color: '#03045e', marginBottom: '20px' }}>💳 Mi Gestión de Pagos y Facturas</h2>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', alignItems: 'start' }}>
-          
-          {/* Columna Izquierda: Selección y Formulario */}
-          <div>
-            {!activeAppointment ? (
-              <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-                <h3 style={{ marginTop: 0, marginBottom: '15px' }}>Escoge una Obligación Pendiente</h3>
-                {myPendingAppointments.length === 0 ? (
-                  <p style={{ color: '#64748b', fontStyle: 'italic' }}>No tienes cobros pendientes en este momento. ¡Estás al día!</p>
-                ) : (
-                  myPendingAppointments.map(app => (
-                    <div key={app.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', border: '1px solid #e2e8f0', borderRadius: '6px', marginBottom: '10px' }}>
-                      <div>
-                        <strong style={{ display: 'block' }}>{app.reason}</strong>
-                        <small style={{ color: '#64748b' }}>Fecha: {app.date} | #{app.id}</small>
-                      </div>
-                      <button onClick={() => setActiveAppointment(app)} className="btn" style={{ backgroundColor: '#10b981', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
-                        Pagar (${app.price.toLocaleString()})
-                      </button>
-                    </div>
-                  ))
-                )}
-              </div>
-            ) : paymentSuccess ? (
-              <div style={{ backgroundColor: '#ecfdf5', border: '1px solid #10b981', padding: '25px', borderRadius: '8px', textAlign: 'center' }}>
-                <span style={{ fontSize: '40px' }}>✅</span>
-                <h3 style={{ color: '#065f46', marginTop: '10px' }}>Transacción Exitosa</h3>
-                <p style={{ fontSize: '14px', color: '#047857' }}>La cita #{activeAppointment.id} ha sido aprobada por la entidad financiera.</p>
-                <button onClick={handleResetForm} className="btn" style={{ marginTop: '15px', backgroundColor: '#065f46', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
-                  Volver a mis cuentas
-                </button>
-              </div>
-            ) : (
-              <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px', alignItems: 'center' }}>
-                  <h3 style={{ margin: 0 }}>Pasarela de Pago</h3>
-                  <button onClick={handleResetForm} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontWeight: 'bold' }}>❌ Cancelar</button>
-                </div>
-                <p style={{ fontSize: '14px', margin: '0 0 15px 0', background: '#f8fafc', padding: '10px', borderRadius: '4px', lineHeight: '1.4' }}>
-                  Estás pagando: <strong>{activeAppointment.reason}</strong> por un valor de <strong style={{ color: '#1e40af' }}>${activeAppointment.price.toLocaleString()} COP</strong>.
-                </p>
-                <form onSubmit={handleProcessPayment}>
-                  <div style={{ marginBottom: '12px' }}>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '4px' }}>Franquicia / Método</label>
-                    <select className="form-control" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }}>
-                      <option value="TARJETA_CREDITO">Tarjeta de Crédito Bancaria</option>
-                      <option value="TRANSFERENCIA_PSE">PSE - Cuenta de Ahorros / Corriente</option>
-                    </select>
-                  </div>
-                  <div style={{ marginBottom: '12px' }}>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '4px' }}>Número de Tarjeta o Identificación</label>
-                    <input type="text" className="form-control" placeholder="Valores numéricos obligatorios" required style={{ width: '100%', padding: '8px', boxSizing: 'border-box', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
-                  </div>
-                  <button type="submit" disabled={isProcessing} style={{ width: '100%', padding: '10px', backgroundColor: '#0284c7', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: isProcessing ? 'not-allowed' : 'pointer' }}>
-                    {isProcessing ? 'Procesando con el Banco...' : 'Confirmar Pago Directo'}
-                  </button>
-                </form>
-              </div>
-            )}
-          </div>
-
-          {/* Columna Derecha: Historial del Paciente */}
-          <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-            <h3 style={{ marginTop: 0, marginBottom: '15px' }}>Historial de Pagos Emitidos</h3>
-            <div style={{ maxHeight: '350px', overflowY: 'auto' }}>
-              {myHistory.map(pay => (
-                <div key={pay.id} style={{ padding: '10px 0', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <span style={{ fontWeight: 'bold', fontSize: '14px', display: 'block' }}>{pay.reason}</span>
-                    <small style={{ color: '#94a3b8' }}>{pay.date} | Ref: {pay.id}</small>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <span style={{ color: '#16a34a', fontWeight: 'bold', display: 'block' }}>+ ${pay.amount.toLocaleString()}</span>
-                    <small style={{ fontSize: '10px', color: '#64748b', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>{pay.method}</small>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ==================== VISTA ADMINISTRADORES ====================
-  const filteredHistory = paymentHistory.filter(p => 
-    p.patientName.toLowerCase().includes(adminSearchQuery.toLowerCase())
-  );
-
-  const totalRecaudado = paymentHistory.reduce((acc, curr) => acc + curr.amount, 0);
 
   return (
-    <div style={{ padding: '20px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
-        <h2 style={{ color: '#03045e', margin: 0 }}>📊 Auditoría Financiera y Rastreo de Clientes</h2>
-        <div style={{ backgroundColor: '#1e3a8a', color: 'white', padding: '10px 20px', borderRadius: '6px', fontWeight: 'bold' }}>
-          Total Recaudado en Caja: ${totalRecaudado.toLocaleString()} COP
+      <div className="payments-page" style={{ padding: '20px' }}>
+
+        {/* SECCIÓN DE RESUMEN EJECUTIVO (KPI CARDS) */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', marginBottom: '25px' }}>
+          <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', borderLeft: '4px solid #10b981' }}>
+            <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 'bold', textTransform: 'uppercase' }}>Ingresos Registrados</span>
+            <h2 style={{ margin: '5px 0 0 0', color: '#0f172a' }}>
+              ${transactions.filter(t => t.status === 'PAGADO').reduce((sum, t) => sum + (t.amount || 0), 0).toLocaleString()} COP
+            </h2>
+          </div>
+          <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', borderLeft: '4px solid #f59e0b' }}>
+            <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 'bold', textTransform: 'uppercase' }}>Transacciones Pendientes</span>
+            <h2 style={{ margin: '5px 0 0 0', color: '#0f172a' }}>
+              {transactions.filter(t => t.status === 'PENDIENTE').length} Ops
+            </h2>
+          </div>
+        </div>
+
+        {/* FILTROS DE VISTA FINANCIERA */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'white', padding: '15px 20px', borderRadius: '8px', marginBottom: '20px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <label style={{ fontSize: '14px', fontWeight: 'bold', color: '#475569' }}>Filtrar Libro:</label>
+            <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                style={{ padding: '6px 12px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+            >
+              <option value="TODOS">Ver todos los movimientos</option>
+              <option value="PAGADO">Solo transacciones Pagadas</option>
+              <option value="PENDIENTE">Solo transacciones Pendientes</option>
+              <option value="RECHAZADO">Solo transacciones Rechazadas</option>
+            </select>
+          </div>
+          <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 'bold' }}>Caja General Activa</span>
+        </div>
+
+        {/* FORMULARIO DE ACCIÓN DE CAJA (Oculto para Doctores) */}
+        {role !== 'DOCTOR' && (
+            <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', marginBottom: '25px' }}>
+              <h3 style={{ marginTop: 0, marginBottom: '15px', color: '#03045e' }}>
+                {role === 'ADMINISTRATOR' ? 'Registrar Recibo de Caja Presencial' : 'Realizar Pago Virtual de Cita'}
+              </h3>
+              <form onSubmit={handleRegisterPayment} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '15px', alignItems: 'flex-end' }}>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <label style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '5px' }}>Número de Cita (ID) *</label>
+                  <input type="number" value={appointmentId} onChange={(e) => setAppointmentId(e.target.value)} style={{ padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} placeholder="Ej: 14" required />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <label style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '5px' }}>Monto Total ($ COP) *</label>
+                  <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} style={{ padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} placeholder="Ej: 85000" required />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <label style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '5px' }}>Método de Pago</label>
+                  <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} style={{ padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }}>
+                    <option value="EFECTIVO">Efectivo 💵</option>
+                    <option value="TARJETA">Tarjeta Débito/Crédito 💳</option>
+                    <option value="TRANSFERENCIA">Transferencia Virtual 💻</option>
+                  </select>
+                </div>
+                <button type="submit" style={{ backgroundColor: '#0077b6', color: 'white', padding: '10px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' }}>
+                  {role === 'ADMINISTRATOR' ? 'Asentar Movimiento' : 'Proceder al Pago'}
+                </button>
+              </form>
+            </div>
+        )}
+
+        {/* TABLA PRINCIPAL DE MOVIMIENTOS CONTABLES */}
+        <div style={{ backgroundColor: 'white', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px', textAlign: 'left' }}>
+            <thead>
+            <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #cbd5e1' }}>
+              <th style={{ padding: '12px' }}>ID Operación</th>
+              <th style={{ padding: '12px' }}>ID Cita</th>
+              <th style={{ padding: '12px' }}>Monto Bruto</th>
+              <th style={{ padding: '12px' }}>Método</th>
+              <th style={{ padding: '12px' }}>Fecha Registro</th>
+              <th style={{ padding: '12px' }}>Estado</th>
+              <th style={{ padding: '12px', textAlign: 'center' }}>Acciones / Comprobantes</th>
+            </tr>
+            </thead>
+            <tbody>
+            {filteredTransactions.length === 0 ? (
+                <tr>
+                  <td colSpan="7" style={{ padding: '20px', textAlign: 'center', color: '#64748b' }}>No se han detectado transacciones financieras en este libro contable.</td>
+                </tr>
+            ) : (
+                filteredTransactions.map((tx) => (
+                    <tr key={tx.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                      <td style={{ padding: '12px' }}><strong>#{tx.id}</strong></td>
+                      <td style={{ padding: '12px' }}>Cita #{tx.appointmentId}</td>
+                      <td style={{ padding: '12px', color: '#0077b6', fontWeight: 'bold' }}>${tx.amount?.toLocaleString()} COP</td>
+                      <td style={{ padding: '12px' }}><span style={{ fontSize: '12px', backgroundColor: '#f1f5f9', padding: '4px 8px', borderRadius: '4px' }}>{tx.method}</span></td>
+                      <td style={{ padding: '12px' }}>{tx.paymentDate ? tx.paymentDate.split('T')[0] : 'Presencial'}</td>
+                      <td style={{ padding: '12px' }}>
+                    <span style={{
+                      padding: '4px 8px',
+                      borderRadius: '4px',
+                      fontSize: '11px',
+                      fontWeight: 'bold',
+                      backgroundColor: tx.status === 'PAGADO' ? '#d1fae5' : tx.status === 'PENDIENTE' ? '#fef3c7' : '#fee2e2',
+                      color: tx.status === 'PAGADO' ? '#065f46' : tx.status === 'PENDIENTE' ? '#92400e' : '#991b1b'
+                    }}>
+                      {tx.status}
+                    </span>
+                      </td>
+                      <td style={{ padding: '12px', display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                        {role === 'ADMINISTRATOR' && (
+                            <button
+                                onClick={() => handleToggleStatus(tx.id, tx.status)}
+                                style={{ padding: '4px 10px', fontSize: '11px', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer', backgroundColor: 'white' }}
+                            >
+                              Cambiar Estado
+                            </button>
+                        )}
+                        {tx.status === 'PAGADO' && (
+                            <button
+                                onClick={() => downloadReceiptPdf(tx.id)}
+                                style={{ padding: '4px 10px', fontSize: '11px', color: 'white', backgroundColor: '#10b981', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+                            >
+                              📄 Descargar Factura PDF
+                            </button>
+                        )}
+                      </td>
+                    </tr>
+                ))
+            )}
+            </tbody>
+          </table>
         </div>
       </div>
-
-      <div style={{ backgroundColor: 'white', padding: '15px', borderRadius: '8px', marginBottom: '20px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', display: 'flex', gap: '10px', alignItems: 'center' }}>
-        <span style={{ fontWeight: 'bold', color: '#475569' }}>🔍 Rastrear Cliente / Paciente:</span>
-        <input 
-          type="text" 
-          placeholder="Escribe el nombre del paciente (Ej. Carlos Pérez)..." 
-          value={adminSearchQuery}
-          onChange={(e) => setAdminSearchQuery(e.target.value)}
-          style={{ padding: '8px', width: '350px', border: '1px solid #cbd5e1', borderRadius: '4px' }}
-        />
-        {adminSearchQuery && <button onClick={() => setAdminSearchQuery('')} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontWeight: 'bold' }}>Limpiar Filtro</button>}
-      </div>
-
-      <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-        <h3 style={{ marginTop: 0 }}>Reporte Consolidado de Transacciones</h3>
-        <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '15px' }}>
-          <thead>
-            <tr style={{ backgroundColor: '#f8fafc', textAlign: 'left', borderBottom: '2px solid #cbd5e1' }}>
-              <th style={{ padding: '12px' }}>ID Transacción</th>
-              <th style={{ padding: '12px' }}>Paciente Auditado</th>
-              <th style={{ padding: '12px' }}>Tratamiento Liquidado</th>
-              <th style={{ padding: '12px' }}>Fecha de Pago</th>
-              <th style={{ padding: '12px' }}>Canal</th>
-              <th style={{ padding: '12px' }}>Monto</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredHistory.length === 0 ? (
-              <tr>
-                <td colSpan="6" style={{ padding: '20px', textAlign: 'center', color: '#64748b' }}>No se encontraron registros financieros para este criterio de búsqueda.</td>
-              </tr>
-            ) : (
-              filteredHistory.map(p => (
-                <tr key={p.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                  <td style={{ padding: '12px', fontFamily: 'monospace' }}>{p.id}</td>
-                  <td style={{ padding: '12px' }}><strong>{p.patientName}</strong></td>
-                  <td style={{ padding: '12px' }}>{p.reason}</td>
-                  <td style={{ padding: '12px' }}>{p.date}</td>
-                  <td style={{ padding: '12px' }}><span style={{ fontSize: '11px', background: '#f1f5f9', padding: '3px 8px', borderRadius: '4px' }}>{p.method}</span></td>
-                  <td style={{ padding: '12px', color: '#16a34a', fontWeight: 'bold' }}>${p.amount.toLocaleString()} COP</td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
   );
 }

@@ -1,58 +1,81 @@
-import { getMockSchedules, getMockScheduleById } from './scheduleMock';
+// src/api/ScheduleApi.js
 
-// Cambia esto a false cuando el backend esté corriendo
-const USE_MOCK = true;
-const BASE = 'http://localhost:8080/api/schedules';
+const SCHEDULE_BASE_URL = 'http://localhost:8080/api/schedules';
 
-export async function getAllSchedules() {
-    if (USE_MOCK) return getMockSchedules();
-    const res = await fetch(BASE);
-    if (!res.ok) throw new Error('Error al obtener horarios');
-    return res.json();
-}
+const getAuthHeaders = () => {
+    const token = localStorage.getItem('token');
+    return {
+        'Content-Type': 'application/json',
+        'Authorization': token ? `Bearer ${token}` : ''
+    };
+};
 
-export async function getSchedulesByDoctor(doctorId) {
-    if (USE_MOCK) return getMockSchedules().filter(s => s.doctorId === doctorId);
-    const res = await fetch(`${BASE}/doctor/${doctorId}`);
-    if (!res.ok) throw new Error('Error al obtener horarios del doctor');
-    return res.json();
-}
-
-export async function createSchedule(data) {
-    if (USE_MOCK) {
-        const mock = getMockSchedules();
-        return { ...data, id: mock.length + 1, doctorName: 'Doctor (mock)' };
+export const getAllSchedules = async () => {
+    try {
+        const response = await fetch(`${SCHEDULE_BASE_URL}`, {
+            method: 'GET',
+            headers: getAuthHeaders()
+        });
+        if (!response.ok) throw new Error('Error al obtener la agenda global');
+        return await response.json();
+    } catch (error) {
+        console.error("Error en getAllSchedules:", error);
+        return [];
     }
-    const res = await fetch(BASE, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-    });
-    if (!res.ok) throw new Error('Error al crear horario');
-    return res.json();
-}
+};
 
-export async function updateSchedule(id, data) {
-    if (USE_MOCK) return { ...data, id, doctorName: 'Doctor (mock)' };
-    const res = await fetch(`${BASE}/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-    });
-    if (!res.ok) throw new Error('Error al actualizar horario');
-    return res.json();
-}
+export const getSchedulesByDoctor = async (doctorId) => {
+    try {
+        const response = await fetch(`${SCHEDULE_BASE_URL}/doctor/${doctorId}`, {
+            method: 'GET',
+            headers: getAuthHeaders()
+        });
+        if (!response.ok) throw new Error('Error al obtener la agenda del especialista');
+        return await response.json();
+    } catch (error) {
+        console.error("Error en getSchedulesByDoctor:", error);
+        return [];
+    }
+};
 
-export async function deleteSchedule(id) {
-    if (USE_MOCK) return true;
-    const res = await fetch(`${BASE}/${id}`, { method: 'DELETE' });
-    if (!res.ok) throw new Error('Error al eliminar horario');
-    return true;
-}
+export const createSchedule = async (scheduleData) => {
+    try {
+        const response = await fetch(`${SCHEDULE_BASE_URL}`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(scheduleData)
+        });
+        if (!response.ok) throw new Error('Error al guardar la franja horaria');
+        return await response.json();
+    } catch (error) {
+        console.error("Error en createSchedule:", error);
+        throw error;
+    }
+};
 
-export async function setScheduleAvailable(id, value) {
-    if (USE_MOCK) return { id, isAvailable: value };
-    const res = await fetch(`${BASE}/${id}/available?value=${value}`, { method: 'PATCH' });
-    if (!res.ok) throw new Error('Error al cambiar disponibilidad');
-    return res.json();
-}
+export const toggleScheduleAvailability = async (id, isAvailable) => {
+    try {
+        const response = await fetch(`${SCHEDULE_BASE_URL}/${id}/available?value=${isAvailable}`, {
+            method: 'PATCH',
+            headers: getAuthHeaders()
+        });
+        if (!response.ok) throw new Error('Error al modificar disponibilidad del horario');
+        return await response.json();
+    } catch (error) {
+        console.error("Error en toggleScheduleAvailability:", error);
+        throw error;
+    }
+};
+
+export const deleteSchedule = async (id) => {
+    try {
+        const response = await fetch(`${SCHEDULE_BASE_URL}/${id}`, {
+            method: 'DELETE',
+            headers: getAuthHeaders()
+        });
+        if (!response.ok) throw new Error('Error al eliminar el horario');
+    } catch (error) {
+        console.error("Error en deleteSchedule:", error);
+        throw error;
+    }
+};

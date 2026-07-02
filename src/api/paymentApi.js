@@ -1,98 +1,101 @@
-// Datos simulados iniciales basados en PaymentResponse
-let mockPayments = [
-  {
-    id: 1,
-    amount: 150000.00,
-    method: "Tarjeta de Crédito",
-    status: "PAGADO",
-    gatewayReference: "REF-99887722",
-    createdAt: "2026-06-18T09:15:00",
-    patientName: "Carlos",
-    patientLastname: "Pérez"
-  },
-  {
-    id: 2,
-    amount: 85000.00,
-    method: "Efectivo",
-    status: "PENDIENTE",
-    gatewayReference: null,
-    createdAt: "2026-06-19T14:30:00",
-    patientName: "Ana",
-    patientLastname: "Gómez"
-  }
-];
+// src/api/paymentApi.js
 
-// Comprobantes emitidos asociados a un paymentId
-let mockReceipts = {
-  1: {
-    id: 501,
-    receiptNumber: "FAC-2026-0001",
-    type: "Factura Electrónica",
-    pdfUrl: "https://odontogate.com/receipts/fac-0001.pdf",
-    issueDate: "2026-06-18T09:20:00",
-    createdAt: "2026-06-18T09:20:00"
-  }
+const PAYMENT_BASE_URL = 'http://localhost:8080/api/payment';
+const RECEIPT_BASE_URL = 'http://localhost:8080/api/receipts';
+
+const getAuthHeaders = () => {
+  const token = localStorage.getItem('token');
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': token ? `Bearer ${token}` : ''
+  };
 };
 
-// GET /api/payment (Ver todos los pagos)
-export const getAllPayments = () => {
-  return new Promise((resolve) => {
-    setTimeout(() => resolve([...mockPayments]), 300);
-  });
-};
-
-// POST /api/payment (Crear pago)
-export const createPayment = (paymentRequest) => {
-  return new Promise((resolve) => {
-    const newPayment = {
-      id: mockPayments.length + 1,
-      amount: parseFloat(paymentRequest.amount),
-      method: paymentRequest.method,
-      status: "PENDIENTE",
-      gatewayReference: paymentRequest.method === "Efectivo" ? null : "REF-" + Math.floor(Math.random() * 90000000 + 10000000),
-      createdAt: new Date().toISOString(),
-      patientName: "Paciente", // Simulación de datos cruzados
-      patientLastname: "Nuevo #" + paymentRequest.appointmentId 
-    };
-    mockPayments = [newPayment, ...mockPayments];
-    setTimeout(() => resolve(newPayment), 300);
-  });
-};
-
-// PUT /api/payment/{id}/estado (Actualizar estado)
-export const updatePaymentStatus = (id, newStatus) => {
-  return new Promise((resolve) => {
-    mockPayments = mockPayments.map(pay => {
-      if (pay.id === id) {
-        return { ...pay, status: newStatus };
-      }
-      return pay;
+// 1. Obtener todos los pagos (Caja General para Administrador)
+export const getAllPayments = async () => {
+  try {
+    const response = await fetch(`${PAYMENT_BASE_URL}`, {
+      method: 'GET',
+      headers: getAuthHeaders()
     });
-    const updated = mockPayments.find(pay => pay.id === id);
-    setTimeout(() => resolve(updated), 200);
-  });
+    if (!response.ok) throw new Error('Error al obtener el historial de caja');
+    return await response.json();
+  } catch (error) {
+    console.error("Error en getAllPayments:", error);
+    return [];
+  }
 };
 
-// POST /receipts (Generar comprobante)
-export const createReceipt = (receiptRequest) => {
-  return new Promise((resolve) => {
-    const randomId = Math.floor(Math.random() * 1000 + 100);
-    const newReceipt = {
-      id: randomId,
-      receiptNumber: `REC-2026-${randomId}`,
-      type: receiptRequest.type,
-      pdfUrl: `https://odontogate.com/receipts/rec-${randomId}.pdf`,
-      issueDate: new Date().toISOString(),
-      createdAt: new Date().toISOString()
-    };
-    mockReceipts[receiptRequest.paymentId] = newReceipt;
-    setTimeout(() => resolve(newReceipt), 300);
-  });
+// 2. Crear Pago Virtual (Paciente)
+export const createVirtualPayment = async (paymentData) => {
+  try {
+    const response = await fetch(`${PAYMENT_BASE_URL}/virtual`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(paymentData)
+    });
+    if (!response.ok) throw new Error('Error en pasarela de pago virtual');
+    return await response.json();
+  } catch (error) {
+    console.error("Error en createVirtualPayment:", error);
+    throw error;
+  }
 };
 
-// GET /receipts/pago/{paymentId}
-export const getReceiptByPayment = (paymentId) => {
-  return new Promise((resolve) => {
-    setTimeout(() => resolve(mockReceipts[paymentId] || null), 200);
-  });
+// 3. Registrar Pago Presencial (Administrador)
+export const createPresentialPayment = async (paymentData) => {
+  try {
+    const response = await fetch(`${PAYMENT_BASE_URL}/presencial`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(paymentData)
+    });
+    if (!response.ok) throw new Error('Error al registrar pago en efectivo/tarjeta');
+    return await response.json();
+  } catch (error) {
+    console.error("Error en createPresentialPayment:", error);
+    throw error;
+  }
+};
+
+// 4. Cambiar Estado del Pago (Administrador)
+export const updatePaymentStatus = async (id, statusText) => {
+  try {
+    const response = await fetch(`${PAYMENT_BASE_URL}/${id}/estado`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: statusText // Envía el texto plano según tu controlador (@RequestBody String status)
+    });
+    if (!response.ok) throw new Error('Error al actualizar estado financiero');
+    return await response.json();
+  } catch (error) {
+    console.error("Error en updatePaymentStatus:", error);
+    throw error;
+  }
+};
+
+// 5. Descargar PDF del Recibo/Factura (Manejo de Bytes crudos de Spring Boot)
+export const downloadReceiptPdf = async (receiptId) => {
+  try {
+    const response = await fetch(`${RECEIPT_BASE_URL}/${receiptId}/pdf`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    });
+    if (!response.ok) throw new Error('No se pudo generar el archivo PDF');
+
+    // Convertir la respuesta a un blob físico ejecutable en navegador
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `Factura_OdontoGate_#${receiptId}.pdf`);
+    document.body.appendChild(link);
+    link.click();
+    link.parentNode.removeChild(link);
+  } catch (error) {
+    console.error("Error descargando el PDF:", error);
+    alert('Ocurrió un error al procesar la descarga de la factura física.');
+  }
 };
