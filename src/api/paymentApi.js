@@ -11,7 +11,7 @@ const getAuthHeaders = () => {
   };
 };
 
-// 1. Obtener todos los pagos (Caja General para Administrador)
+// 1. Obtener todos los pagos (solo ADMINISTRATOR)
 export const getAllPayments = async () => {
   try {
     const response = await fetch(`${PAYMENT_BASE_URL}`, {
@@ -26,7 +26,22 @@ export const getAllPayments = async () => {
   }
 };
 
-// 2. Crear Pago Virtual (Paciente)
+// 2. Obtener pagos de un paciente específico
+export const getPaymentsByPatient = async (patientId) => {
+  try {
+    const response = await fetch(`${PAYMENT_BASE_URL}/patient/${patientId}`, {
+      method: 'GET',
+      headers: getAuthHeaders()
+    });
+    if (!response.ok) throw new Error('Error al obtener los pagos del paciente');
+    return await response.json();
+  } catch (error) {
+    console.error("Error en getPaymentsByPatient:", error);
+    return [];
+  }
+};
+
+// 3. Crear Pago Virtual (PATIENT → redirige a MercadoPago)
 export const createVirtualPayment = async (paymentData) => {
   try {
     const response = await fetch(`${PAYMENT_BASE_URL}/virtual`, {
@@ -34,7 +49,11 @@ export const createVirtualPayment = async (paymentData) => {
       headers: getAuthHeaders(),
       body: JSON.stringify(paymentData)
     });
-    if (!response.ok) throw new Error('Error en pasarela de pago virtual');
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+      const message = errorData?.message || errorData?.descripcion || 'Error en pasarela de pago virtual';
+      throw new Error(message);
+    }
     return await response.json();
   } catch (error) {
     console.error("Error en createVirtualPayment:", error);
@@ -42,7 +61,27 @@ export const createVirtualPayment = async (paymentData) => {
   }
 };
 
-// 3. Registrar Pago Presencial (Administrador)
+// 4. Reintentar pago virtual existente (pago PENDIENTE ya creado)
+// Regenera el checkoutUrl de MercadoPago sin crear un nuevo registro
+export const retryVirtualPayment = async (paymentId) => {
+  try {
+    const response = await fetch(`${PAYMENT_BASE_URL}/${paymentId}/retry`, {
+      method: 'POST',
+      headers: getAuthHeaders()
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+      const message = errorData?.message || errorData?.descripcion || 'Error al reintentar el pago';
+      throw new Error(message);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error("Error en retryVirtualPayment:", error);
+    throw error;
+  }
+};
+
+// 5. Registrar Pago Presencial (ADMINISTRATOR)
 export const createPresentialPayment = async (paymentData) => {
   try {
     const response = await fetch(`${PAYMENT_BASE_URL}/presencial`, {
@@ -50,7 +89,11 @@ export const createPresentialPayment = async (paymentData) => {
       headers: getAuthHeaders(),
       body: JSON.stringify(paymentData)
     });
-    if (!response.ok) throw new Error('Error al registrar pago en efectivo/tarjeta');
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+      const message = errorData?.message || errorData?.descripcion || 'Error al registrar pago presencial';
+      throw new Error(message);
+    }
     return await response.json();
   } catch (error) {
     console.error("Error en createPresentialPayment:", error);
@@ -58,15 +101,22 @@ export const createPresentialPayment = async (paymentData) => {
   }
 };
 
-// 4. Cambiar Estado del Pago (Administrador)
+// 6. Cambiar Estado del Pago (ADMINISTRATOR) — envía texto plano según el @RequestBody String del controller
 export const updatePaymentStatus = async (id, statusText) => {
   try {
     const response = await fetch(`${PAYMENT_BASE_URL}/${id}/estado`, {
       method: 'PUT',
-      headers: getAuthHeaders(),
-      body: statusText // Envía el texto plano según tu controlador (@RequestBody String status)
+      headers: {
+        ...getAuthHeaders(),
+        'Content-Type': 'text/plain'
+      },
+      body: statusText
     });
-    if (!response.ok) throw new Error('Error al actualizar estado financiero');
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+      const message = errorData?.message || errorData?.descripcion || 'Error al actualizar estado';
+      throw new Error(message);
+    }
     return await response.json();
   } catch (error) {
     console.error("Error en updatePaymentStatus:", error);
@@ -74,18 +124,14 @@ export const updatePaymentStatus = async (id, statusText) => {
   }
 };
 
-// 5. Descargar PDF del Recibo/Factura (Manejo de Bytes crudos de Spring Boot)
+// 7. Descargar PDF del Recibo
 export const downloadReceiptPdf = async (receiptId) => {
   try {
     const response = await fetch(`${RECEIPT_BASE_URL}/${receiptId}/pdf`, {
       method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
     });
     if (!response.ok) throw new Error('No se pudo generar el archivo PDF');
-
-    // Convertir la respuesta a un blob físico ejecutable en navegador
     const blob = await response.blob();
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -96,6 +142,6 @@ export const downloadReceiptPdf = async (receiptId) => {
     link.parentNode.removeChild(link);
   } catch (error) {
     console.error("Error descargando el PDF:", error);
-    alert('Ocurrió un error al procesar la descarga de la factura física.');
+    alert('Ocurrió un error al procesar la descarga de la factura.');
   }
 };
